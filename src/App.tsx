@@ -10,6 +10,7 @@ import { RSSView } from '@/components/rss/RSSView'
 import { SearchView } from '@/components/search/SearchView'
 import { LogsView } from '@/components/logs/LogsView'
 import { SettingsView } from '@/components/settings/SettingsView'
+import { StatsView } from '@/components/stats/StatsView'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -20,7 +21,7 @@ const queryClient = new QueryClient({
   },
 })
 
-type Tab = 'torrents' | 'add' | 'rss' | 'search' | 'logs' | 'settings'
+type Tab = 'torrents' | 'add' | 'rss' | 'search' | 'logs' | 'settings' | 'stats'
 
 function AppContent() {
   const [activeTab, setActiveTab] = useState<Tab>('torrents')
@@ -46,6 +47,7 @@ function AppContent() {
       {activeTab === 'search' && <SearchView />}
       {activeTab === 'logs' && <LogsView />}
       {activeTab === 'settings' && <SettingsView />}
+      {activeTab === 'stats' && <StatsView />}
     </Layout>
   )
 }

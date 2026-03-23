@@ -1,8 +1,28 @@
-import { useState, useMemo, useRef } from 'react'
-import { Search as SearchIcon, Loader2, ExternalLink, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Download, X } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { useState, useMemo, useRef } from "react";
+import {
+  Search as SearchIcon,
+  Loader2,
+  ExternalLink,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  ChevronUp,
+  Download,
+  X,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -10,7 +30,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
+} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -18,175 +38,190 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { toast } from '@/hooks/use-toast'
-import { qbitClient } from '@/lib/api'
-import type { SearchResult } from '@/types'
+} from "@/components/ui/dropdown-menu";
+import { toast } from "@/hooks/use-toast";
+import { qbitClient } from "@/lib/api";
+import { TorrentPreviewDialog } from "./TorrentPreviewDialog";
+import type { SearchResult } from "@/types";
 
 function formatSize(bytes: number): string {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
+  if (bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
 }
 
-type SortField = 'fileName' | 'fileSize' | 'nbSeeders' | 'nbLeechers' | 'siteUrl'
-type SortDirection = 'asc' | 'desc'
+type SortField =
+  | "fileName"
+  | "fileSize"
+  | "nbSeeders"
+  | "nbLeechers"
+  | "siteUrl";
+type SortDirection = "asc" | "desc";
 
-const PAGE_SIZE = 20
+const PAGE_SIZE = 20;
 
 export function SearchView() {
-  const [query, setQuery] = useState('')
-  const [results, setResults] = useState<SearchResult[]>([])
-  const [isSearching, setIsSearching] = useState(false)
-  const [searched, setSearched] = useState(false)
-  const [sortField, setSortField] = useState<SortField>('nbSeeders')
-  const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
-  const [currentPage, setCurrentPage] = useState(1)
-  const [selectedResult, setSelectedResult] = useState<SearchResult | null>(null)
-  const [isDownloading, setIsDownloading] = useState(false)
-  const [expandedResult, setExpandedResult] = useState<number | null>(null)
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searched, setSearched] = useState(false);
+  const [sortField, setSortField] = useState<SortField>("nbSeeders");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [selectedResult, setSelectedResult] = useState<SearchResult | null>(
+    null,
+  );
+  const [previewResult, setPreviewResult] = useState<SearchResult | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [expandedResult, setExpandedResult] = useState<number | null>(null);
   const [cancelSearch, setCancelSearch] = useState(false);
-  const cancelSearchRef = useRef(false)
-  const currentSearchIdRef = useRef<number | null>(null)
+  const cancelSearchRef = useRef(false);
+  const currentSearchIdRef = useRef<number | null>(null);
 
   const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!query.trim()) return
-    setCancelSearch(false)
-    cancelSearchRef.current = false
-    setIsSearching(true)
-    setSearched(true)
-    setResults([])
-    setCurrentPage(1)
+    e.preventDefault();
+    if (!query.trim()) return;
+    setCancelSearch(false);
+    cancelSearchRef.current = false;
+    setIsSearching(true);
+    setSearched(true);
+    setResults([]);
+    setCurrentPage(1);
 
     try {
-      const { id } = await qbitClient.startSearch(query)
+      const { id } = await qbitClient.startSearch(query);
 
-      currentSearchIdRef.current = id
+      currentSearchIdRef.current = id;
 
       if (!id) {
-        toast.error('Search not available - no plugins configured')
-        return
+        toast.error("Search not available - no plugins configured");
+        return;
       }
-      let attempts = 0
+      let attempts = 0;
       while (attempts < 60 && !cancelSearchRef.current) {
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        await new Promise((resolve) => setTimeout(resolve, 1000));
 
-        const { results: searchResults, status } = await qbitClient.getSearchResults(id)
+        const { results: searchResults, status } =
+          await qbitClient.getSearchResults(id);
 
         if (searchResults && searchResults.length > 0) {
-          setResults(searchResults)
+          setResults(searchResults);
         }
 
-        if (status === 'Stopped' || status === 'Completed') {
-          break
+        if (status === "Stopped" || status === "Completed") {
+          break;
         }
-        attempts++
+        attempts++;
       }
     } catch (err) {
-      console.error('Search error:', err)
-      toast.error('Search not available. Please configure search plugins in qBittorrent.')
+      console.error("Search error:", err);
+      toast.error(
+        "Search not available. Please configure search plugins in qBittorrent.",
+      );
     } finally {
-      setIsSearching(false)
-      currentSearchIdRef.current = null
-      cancelSearchRef.current = false
-      setCancelSearch(false)
+      setIsSearching(false);
+      currentSearchIdRef.current = null;
+      cancelSearchRef.current = false;
+      setCancelSearch(false);
     }
-  }
+  };
 
   const handleCancelSearch = async () => {
     // set both ref and state (state is used for UI, ref for immediate loop control)
-    cancelSearchRef.current = true
-    setCancelSearch(true)
+    cancelSearchRef.current = true;
+    setCancelSearch(true);
 
-    const id = currentSearchIdRef.current
+    const id = currentSearchIdRef.current;
     if (id != null) {
       try {
-        await qbitClient.stopSearch(id)
-        toast.info('Search cancelled')
+        await qbitClient.stopSearch(id);
+        toast.info("Search cancelled");
       } catch (err) {
-        console.warn('Failed to stop search on server', err)
-        toast.error('Failed to cancel search on server')
+        console.warn("Failed to stop search on server", err);
+        toast.error("Failed to cancel search on server");
       }
     } else {
-      toast.info('Search cancelled')
+      toast.info("Search cancelled");
     }
-  }
+  };
 
   const sortedResults = useMemo(() => {
     return [...results].sort((a, b) => {
-      let aVal: string | number = a[sortField]
-      let bVal: string | number = b[sortField]
+      let aVal: string | number = a[sortField];
+      let bVal: string | number = b[sortField];
 
-      if (typeof aVal === 'string') {
-        aVal = aVal.toLowerCase()
-        bVal = (bVal as string).toLowerCase()
+      if (typeof aVal === "string") {
+        aVal = aVal.toLowerCase();
+        bVal = (bVal as string).toLowerCase();
       }
 
-      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1
-      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1
-      return 0
-    })
-  }, [results, sortField, sortDirection])
+      if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
+      if (aVal > bVal) return sortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [results, sortField, sortDirection]);
 
-  const totalPages = Math.ceil(sortedResults.length / PAGE_SIZE)
+  const totalPages = Math.ceil(sortedResults.length / PAGE_SIZE);
   const paginatedResults = sortedResults.slice(
     (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE
-  )
+    currentPage * PAGE_SIZE,
+  );
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
-      setSortField(field)
-      setSortDirection('desc')
+      setSortField(field);
+      setSortDirection("desc");
     }
-  }
+  };
 
   const handleDownload = async () => {
-    if (!selectedResult?.fileUrl) return
+    if (!selectedResult?.fileUrl) return;
 
-    setIsDownloading(true)
+    setIsDownloading(true);
     try {
-      await qbitClient.addTorrentUrl(selectedResult.fileUrl)
-      toast.success('Torrent added to download queue')
-      setSelectedResult(null)
+      await qbitClient.addTorrentUrl(selectedResult.fileUrl);
+      toast.success("Torrent added to download queue");
+      setSelectedResult(null);
     } catch (err) {
-      console.error('Download error:', err)
-      toast.error('Failed to add torrent')
+      console.error("Download error:", err);
+      toast.error("Failed to add torrent");
     } finally {
-      setIsDownloading(false)
+      setIsDownloading(false);
     }
-  }
+  };
 
   const SortIcon = ({ field }: { field: SortField }) => {
-    if (sortField !== field) return <ArrowUpDown className="h-4 w-4 ml-1 inline opacity-50" />
-    return sortDirection === 'asc'
-      ? <ArrowUp className="h-4 w-4 ml-1 inline" />
-      : <ArrowDown className="h-4 w-4 ml-1 inline" />
-  }
+    if (sortField !== field)
+      return <ArrowUpDown className="h-4 w-4 ml-1 inline opacity-50" />;
+    return sortDirection === "asc" ? (
+      <ArrowUp className="h-4 w-4 ml-1 inline" />
+    ) : (
+      <ArrowDown className="h-4 w-4 ml-1 inline" />
+    );
+  };
 
   const sortLabels: Record<SortField, string> = {
-    fileName: 'Name',
-    fileSize: 'Size',
-    nbSeeders: 'Seeds',
-    nbLeechers: 'Leeches',
-    siteUrl: 'Source',
-  }
+    fileName: "Name",
+    fileSize: "Size",
+    nbSeeders: "Seeds",
+    nbLeechers: "Leeches",
+    siteUrl: "Source",
+  };
 
   return (
     <div className="space-y-4">
       <Card className="gap-2">
-        <CardHeader className='flex justify-between'>
+        <CardHeader className="flex justify-between">
           <CardTitle>Search Torrents</CardTitle>
           {/* <CardDescription className='text-xs'>Results {results.length}</CardDescription> */}
         </CardHeader>
@@ -221,7 +256,6 @@ export function SearchView() {
         </CardContent>
       </Card>
 
-
       {searched && !isSearching && results.length === 0 && (
         <div className="text-center py-8 text-muted-foreground">
           No results found
@@ -232,30 +266,42 @@ export function SearchView() {
         <>
           {/* Mobile Sort Dropdown */}
           <div className="md:hidden flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">{sortedResults.length} results</span>
+            <span className="text-sm text-muted-foreground">
+              {sortedResults.length} results
+            </span>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">
                   <ArrowUpDown className="h-4 w-4 mr-2" />
                   Sort: {sortLabels[sortField]}
-                  {sortDirection === 'asc' ? ' ↑' : ' ↓'}
+                  {sortDirection === "asc" ? " ↑" : " ↓"}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => handleSort('fileName')}>
-                  Name {sortField === 'fileName' && (sortDirection === 'asc' ? '↑' : '↓')}
+                <DropdownMenuItem onClick={() => handleSort("fileName")}>
+                  Name{" "}
+                  {sortField === "fileName" &&
+                    (sortDirection === "asc" ? "↑" : "↓")}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleSort('fileSize')}>
-                  Size {sortField === 'fileSize' && (sortDirection === 'asc' ? '↑' : '↓')}
+                <DropdownMenuItem onClick={() => handleSort("fileSize")}>
+                  Size{" "}
+                  {sortField === "fileSize" &&
+                    (sortDirection === "asc" ? "↑" : "↓")}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleSort('nbSeeders')}>
-                  Seeds {sortField === 'nbSeeders' && (sortDirection === 'asc' ? '↑' : '↓')}
+                <DropdownMenuItem onClick={() => handleSort("nbSeeders")}>
+                  Seeds{" "}
+                  {sortField === "nbSeeders" &&
+                    (sortDirection === "asc" ? "↑" : "↓")}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleSort('nbLeechers')}>
-                  Leeches {sortField === 'nbLeechers' && (sortDirection === 'asc' ? '↑' : '↓')}
+                <DropdownMenuItem onClick={() => handleSort("nbLeechers")}>
+                  Leeches{" "}
+                  {sortField === "nbLeechers" &&
+                    (sortDirection === "asc" ? "↑" : "↓")}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleSort('siteUrl')}>
-                  Source {sortField === 'siteUrl' && (sortDirection === 'asc' ? '↑' : '↓')}
+                <DropdownMenuItem onClick={() => handleSort("siteUrl")}>
+                  Source{" "}
+                  {sortField === "siteUrl" &&
+                    (sortDirection === "asc" ? "↑" : "↓")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -269,28 +315,43 @@ export function SearchView() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-[300px]">
-                          <button onClick={() => handleSort('fileName')} className="flex items-center hover:text-foreground">
+                        <TableHead className="w-[700px]">
+                          <button
+                            onClick={() => handleSort("fileName")}
+                            className="flex items-center hover:text-foreground"
+                          >
                             Name <SortIcon field="fileName" />
                           </button>
                         </TableHead>
                         <TableHead>
-                          <button onClick={() => handleSort('fileSize')} className="flex items-center hover:text-foreground">
+                          <button
+                            onClick={() => handleSort("fileSize")}
+                            className="flex items-center hover:text-foreground"
+                          >
                             Size <SortIcon field="fileSize" />
                           </button>
                         </TableHead>
                         <TableHead>
-                          <button onClick={() => handleSort('nbSeeders')} className="flex items-center hover:text-foreground">
+                          <button
+                            onClick={() => handleSort("nbSeeders")}
+                            className="flex items-center hover:text-foreground"
+                          >
                             Seeds <SortIcon field="nbSeeders" />
                           </button>
                         </TableHead>
                         <TableHead>
-                          <button onClick={() => handleSort('nbLeechers')} className="flex items-center hover:text-foreground">
+                          <button
+                            onClick={() => handleSort("nbLeechers")}
+                            className="flex items-center hover:text-foreground"
+                          >
                             Leeches <SortIcon field="nbLeechers" />
                           </button>
                         </TableHead>
                         <TableHead>
-                          <button onClick={() => handleSort('siteUrl')} className="flex items-center hover:text-foreground">
+                          <button
+                            onClick={() => handleSort("siteUrl")}
+                            className="flex items-center hover:text-foreground"
+                          >
                             Source <SortIcon field="siteUrl" />
                           </button>
                         </TableHead>
@@ -302,14 +363,20 @@ export function SearchView() {
                         <TableRow
                           key={index}
                           className="cursor-pointer hover:bg-muted/50"
-                          onClick={() => result.fileUrl && setSelectedResult(result)}
+                          onDoubleClick={() =>
+                            result.fileUrl && setPreviewResult(result)
+                          }
                         >
                           <TableCell className="font-medium truncate max-w-[300px]">
                             {result.fileName}
                           </TableCell>
                           <TableCell>{formatSize(result.fileSize)}</TableCell>
-                          <TableCell className="text-green-500">{result.nbSeeders}</TableCell>
-                          <TableCell className="text-red-500">{result.nbLeechers}</TableCell>
+                          <TableCell className="text-green-500">
+                            {result.nbSeeders}
+                          </TableCell>
+                          <TableCell className="text-red-500">
+                            {result.nbLeechers}
+                          </TableCell>
                           <TableCell className="text-muted-foreground truncate max-w-[150px]">
                             {result.siteUrl}
                           </TableCell>
@@ -320,8 +387,8 @@ export function SearchView() {
                                   variant="ghost"
                                   size="icon"
                                   onClick={(e) => {
-                                    e.stopPropagation()
-                                    setSelectedResult(result)
+                                    e.stopPropagation();
+                                    setSelectedResult(result);
                                   }}
                                 >
                                   <Download className="h-4 w-4" />
@@ -350,13 +417,15 @@ export function SearchView() {
                 {totalPages > 1 && (
                   <div className="flex items-center justify-between px-4 py-2 border-t">
                     <div className="text-sm text-muted-foreground">
-                      Showing {(currentPage - 1) * PAGE_SIZE + 1} to {Math.min(currentPage * PAGE_SIZE, sortedResults.length)} of {sortedResults.length} results
+                      Showing {(currentPage - 1) * PAGE_SIZE + 1} to{" "}
+                      {Math.min(currentPage * PAGE_SIZE, sortedResults.length)}{" "}
+                      of {sortedResults.length} results
                     </div>
                     <div className="flex items-center gap-2">
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setCurrentPage(p => p - 1)}
+                        onClick={() => setCurrentPage((p) => p - 1)}
                         disabled={currentPage === 1}
                       >
                         <ChevronLeft className="h-4 w-4" />
@@ -367,7 +436,7 @@ export function SearchView() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setCurrentPage(p => p + 1)}
+                        onClick={() => setCurrentPage((p) => p + 1)}
                         disabled={currentPage === totalPages}
                       >
                         <ChevronRight className="h-4 w-4" />
@@ -382,69 +451,131 @@ export function SearchView() {
           {/* Mobile Cards */}
           <div className="md:hidden space-y-2">
             {paginatedResults.map((result, index) => {
-              const isExpanded = expandedResult === index
+              const isExpanded = expandedResult === index;
               return (
                 <Card key={index} className="py-3">
                   <CardContent className="px-3">
                     <div className="flex items-start gap-2">
-                      <div className="flex-1 min-w-0 cursor-pointer" onClick={() => result.fileUrl && setSelectedResult(result)}>
+                      <div
+                        className="flex-1 min-w-0 cursor-pointer"
+                        onClick={() =>
+                          result.fileUrl && setPreviewResult(result)
+                        }
+                      >
                         <div className="flex items-center justify-between text-[10px]">
-                          <span className="text-muted-foreground">{result.nbSeeders} seeds • {result.nbLeechers} leeches</span>
+                          <span className="text-muted-foreground">
+                            {result.nbSeeders} seeds • {result.nbLeechers}{" "}
+                            leeches
+                          </span>
                         </div>
-                        <p className="font-medium text-xs break-words max-w-[240px]">{result.fileName}</p>
+                        <p className="font-medium text-xs break-words max-w-[240px]">
+                          {result.fileName}
+                        </p>
                         <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-0.5">
-                          <span className="flex-shrink-0">{formatSize(result.fileSize)}</span>
+                          <span className="flex-shrink-0">
+                            {formatSize(result.fileSize)}
+                          </span>
                           <span className="truncate">{result.siteUrl}</span>
                         </div>
 
                         {isExpanded && (
                           <div className="mt-1 pt-1 border-t space-y-1 text-[10px]">
                             <div className="flex justify-between">
-                              <span className="text-muted-foreground">Size:</span>
+                              <span className="text-muted-foreground">
+                                Size:
+                              </span>
                               <span>{formatSize(result.fileSize)}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-muted-foreground">Seeds:</span>
+                              <span className="text-muted-foreground">
+                                Seeds:
+                              </span>
                               <span>{result.nbSeeders}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-muted-foreground">Leeches:</span>
+                              <span className="text-muted-foreground">
+                                Leeches:
+                              </span>
                               <span>{result.nbLeechers}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-muted-foreground">Source:</span>
+                              <span className="text-muted-foreground">
+                                Source:
+                              </span>
                               <span className="truncate">{result.siteUrl}</span>
                             </div>
                           </div>
                         )}
                       </div>
-                      <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0" onClick={(e) => { e.stopPropagation(); setExpandedResult(isExpanded ? null : index) }} aria-expanded={isExpanded} aria-label={isExpanded ? 'Collapse' : 'Expand'}>
-                        {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 flex-shrink-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExpandedResult(isExpanded ? null : index);
+                        }}
+                        aria-expanded={isExpanded}
+                        aria-label={isExpanded ? "Collapse" : "Expand"}
+                      >
+                        {isExpanded ? (
+                          <ChevronUp className="h-3 w-3" />
+                        ) : (
+                          <ChevronDown className="h-3 w-3" />
+                        )}
                       </Button>
                     </div>
 
                     <div className="flex items-center gap-1 mt-1">
                       {result.fileUrl && (
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); setSelectedResult(result) }} aria-label="Download">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedResult(result);
+                          }}
+                          aria-label="Download"
+                        >
                           <Download className="h-3 w-3" />
                         </Button>
                       )}
                       {result.descrLink && (
-                        <a href={result.descrLink} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="flex items-center justify-center w-8 h-8 rounded hover:bg-accent" aria-label="Open details">
+                        <a
+                          href={result.descrLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center justify-center w-8 h-8 rounded hover:bg-accent"
+                          aria-label="Open details"
+                        >
                           <ExternalLink className="h-3 w-3" />
                         </a>
                       )}
                     </div>
                   </CardContent>
                 </Card>
-              )
+              );
             })}
           </div>
         </>
       )}
 
+      {/* Preview Dialog */}
+      <TorrentPreviewDialog
+        result={previewResult}
+        open={!!previewResult}
+        onOpenChange={(open) => {
+          if (!open) setPreviewResult(null);
+        }}
+      />
+
       {/* Download Dialog */}
-      <Dialog open={!!selectedResult} onOpenChange={() => setSelectedResult(null)}>
+      <Dialog
+        open={!!selectedResult}
+        onOpenChange={() => setSelectedResult(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Download Torrent</DialogTitle>
@@ -457,7 +588,10 @@ export function SearchView() {
               <p className="font-medium">{selectedResult.fileName}</p>
               <div className="text-sm text-muted-foreground mt-2 space-y-1">
                 <p>Size: {formatSize(selectedResult.fileSize)}</p>
-                <p>Seeds: {selectedResult.nbSeeders} | Leechers: {selectedResult.nbLeechers}</p>
+                <p>
+                  Seeds: {selectedResult.nbSeeders} | Leechers:{" "}
+                  {selectedResult.nbLeechers}
+                </p>
                 <p>Source: {selectedResult.siteUrl}</p>
               </div>
             </div>
@@ -478,5 +612,5 @@ export function SearchView() {
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }

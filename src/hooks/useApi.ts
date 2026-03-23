@@ -158,3 +158,12 @@ export function useLogs() {
     refetchInterval: 5000,
   })
 }
+
+export function useServerState() {
+  return useQuery({
+    queryKey: ['server', 'state'],
+    queryFn: () => qbitClient.getServerState(),
+    enabled: !!qbitClient.isConfigured(),
+    refetchInterval: 5000,
+  })
+}

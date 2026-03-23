@@ -172,3 +172,17 @@ export interface TransferInfo {
   up_info_speed: number
   up_rate_limit: number
 }
+
+export interface ServerState {
+  alltime_dl: number
+  alltime_ul: number
+  global_ratio: string
+  dl_info_data: number
+  up_info_data: number
+  dl_info_speed: number
+  up_info_speed: number
+  dht_nodes: number
+  connection_status: string
+  total_wasted_session: number
+  total_peer_connections: number
+}

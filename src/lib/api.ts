@@ -8,7 +8,8 @@ import type {
   RSSRule,
   SearchResult,
   LogEntry,
-  TransferInfo
+  TransferInfo,
+  ServerState
 } from '@/types'
 
 import { demoClient } from './demoClient'
@@ -160,11 +161,12 @@ class QBittorrentClient {
     return this.request<TorrentTracker[]>(`/api/v2/torrents/trackers?hash=${hash}`)
   }
 
-  async addTorrentUrl(url: string, options?: { savePath?: string; category?: string }): Promise<void> {
+  async addTorrentUrl(url: string, options?: { savePath?: string; category?: string; paused?: boolean }): Promise<void> {
     const formData = new URLSearchParams()
     formData.append('urls', url)
     if (options?.savePath) formData.append('savepath', options.savePath)
     if (options?.category) formData.append('category', options.category)
+    if (options?.paused) formData.append('paused', 'true')
 
     await this.request('/api/v2/torrents/add', {
       method: 'POST',
@@ -291,6 +293,11 @@ class QBittorrentClient {
 
   async getLogs(normal: boolean = true, lastId: number = -1): Promise<LogEntry[]> {
     return this.request(`/api/v2/log/main?normal=${normal}&lastId=${lastId}`)
+  }
+
+  async getServerState(): Promise<ServerState> {
+    const data = await this.request<{ server_state: ServerState }>('/api/v2/sync/maindata?rid=0')
+    return data.server_state
   }
 }
 

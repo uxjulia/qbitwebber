@@ -7,6 +7,7 @@ import type {
   SearchResult,
   LogEntry,
   TransferInfo,
+  ServerState,
 } from '@/types'
 
 class DemoQBittorrentClient {
@@ -358,7 +359,7 @@ class DemoQBittorrentClient {
     ]
   }
 
-  async addTorrentUrl(_url: string, _options?: { savePath?: string; category?: string }): Promise<void> {
+  async addTorrentUrl(_url: string, _options?: { savePath?: string; category?: string; paused?: boolean }): Promise<void> {
   }
 
   async addTorrentFile(_file: File, _options?: { savePath?: string; category?: string }): Promise<void> {
@@ -430,6 +431,22 @@ class DemoQBittorrentClient {
         { descrLink: 'https://example.com/2', fileName: 'fedora-40-workstation.iso', fileSize: 2_200_000_000, fileUrl: 'magnet:2', nbLeechers: 50, nbSeeders: 200, siteUrl: 'https://example.com' },
       ],
       status: 'Stopped',
+    }
+  }
+
+  async getServerState(): Promise<ServerState> {
+    return {
+      alltime_dl: 2_847_293_450_112,
+      alltime_ul: 5_193_847_201_843,
+      global_ratio: '1.82',
+      dl_info_data: 156_789_012_345,
+      up_info_data: 89_012_345_678,
+      dl_info_speed: 2_345_678,
+      up_info_speed: 567_890,
+      dht_nodes: 128,
+      connection_status: 'connected',
+      total_wasted_session: 45_231_456,
+      total_peer_connections: 87,
     }
   }
 

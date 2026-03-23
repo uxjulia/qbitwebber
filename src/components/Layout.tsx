@@ -1,14 +1,14 @@
 import { useState } from 'react'
-import { 
-  Download, 
-  Server, 
-  Search, 
-  FileText, 
+import {
+  Download,
+  Server,
+  Search,
+  FileText,
   Settings,
   Menu,
   X,
-  Home,
-  Radio
+  Radio,
+  BarChart2
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
 import { useTransferInfo } from '@/hooks/useApi'
 
-type Tab = 'torrents' | 'add' | 'rss' | 'search' | 'logs' | 'settings'
+type Tab = 'torrents' | 'add' | 'rss' | 'search' | 'logs' | 'settings' | 'stats'
 
 interface LayoutProps {
   activeTab: Tab
@@ -35,6 +35,7 @@ export function Layout({ activeTab, onTabChange, children }: LayoutProps) {
     { id: 'rss', label: 'RSS', icon: <Radio className="h-5 w-5" /> },
     { id: 'search', label: 'Search', icon: <Search className="h-5 w-5" /> },
     { id: 'logs', label: 'Logs', icon: <FileText className="h-5 w-5" /> },
+    { id: 'stats', label: 'Stats', icon: <BarChart2 className="h-5 w-5" /> },
     { id: 'settings', label: 'Settings', icon: <Settings className="h-5 w-5" /> },
   ]
 
