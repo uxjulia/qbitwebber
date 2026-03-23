@@ -1,3 +1,12 @@
+# Personal Fork
+
+This fork includes the following updates:
+
+- Preview content before downloading
+- Stats page
+- Apply categories and save path when adding files from search
+- Minor UI improvements
+
 # qbitwebber
 
 A minimalist, mobile-friendly frontend for qbittorrent web UI.
@@ -7,7 +16,6 @@ I built the initial version of this on a weekend because I felt the other option
 Built with React, Vite, and TypeScript.
 
 <img src="docs/screenshots/torrents_desktop.png" alt="Desktop Preview">
-
 
 ## Features
 
@@ -32,7 +40,6 @@ Change that value to the full URL (including protocol and port) where your qBitt
 - Default local qBittorrent: `http://localhost:8080`
 - Remote machine on LAN: `http://192.168.1.100:8080`
 
-
 To run in dev mode:
 
 ```bash
@@ -56,10 +63,10 @@ npm run release
 ```
 
 ## Disclamer
- 
+
 To keep this from getting too cluttered it is likely missing things.
 
-I may or maynot maintain this. 
+I may or maynot maintain this.
 
 Also you should only ever use this to download linux distros and nothing else.
 

@@ -362,8 +362,21 @@ class DemoQBittorrentClient {
   async addTorrentUrl(_url: string, _options?: { savePath?: string; category?: string; paused?: boolean }): Promise<void> {
   }
 
-  async addTorrentFile(_file: File, _options?: { savePath?: string; category?: string }): Promise<void> {
+  async addTorrentFile(_file: File, _options?: { savePath?: string; category?: string; paused?: boolean }): Promise<void> {
   }
+
+  async getCategories(): Promise<Record<string, { name: string; savePath: string }>> {
+    return {
+      Movies: { name: 'Movies', savePath: '/downloads/movies' },
+      'TV Shows': { name: 'TV Shows', savePath: '/downloads/tv' },
+      Software: { name: 'Software', savePath: '/downloads/software' },
+      Music: { name: 'Music', savePath: '/downloads/music' },
+    }
+  }
+
+  async setTorrentLocation(_hashes: string[], _location: string): Promise<void> {}
+
+  async setTorrentCategory(_hashes: string[], _category: string): Promise<void> {}
 
   async deleteTorrents(_hashes: string[], _deleteFiles: boolean = false): Promise<void> {
   }

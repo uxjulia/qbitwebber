@@ -15,14 +15,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -48,6 +41,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { qbitClient } from "@/lib/api";
 import { TorrentPreviewDialog } from "./TorrentPreviewDialog";
+import type { TorrentPreviewInput } from "./TorrentPreviewDialog";
 import type { SearchResult } from "@/types";
 
 function formatSize(bytes: number): string {
@@ -79,7 +73,7 @@ export function SearchView() {
   const [selectedResult, setSelectedResult] = useState<SearchResult | null>(
     null,
   );
-  const [previewResult, setPreviewResult] = useState<SearchResult | null>(null);
+  const [previewResult, setPreviewResult] = useState<TorrentPreviewInput | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [expandedResult, setExpandedResult] = useState<number | null>(null);
   const [cancelSearch, setCancelSearch] = useState(false);
@@ -364,7 +358,7 @@ export function SearchView() {
                           key={index}
                           className="cursor-pointer hover:bg-muted/50"
                           onDoubleClick={() =>
-                            result.fileUrl && setPreviewResult(result)
+                            result.fileUrl && setPreviewResult({ fileUrl: result.fileUrl, fileName: result.fileName })
                           }
                         >
                           <TableCell className="font-medium truncate max-w-[300px]">
@@ -459,7 +453,7 @@ export function SearchView() {
                       <div
                         className="flex-1 min-w-0 cursor-pointer"
                         onClick={() =>
-                          result.fileUrl && setPreviewResult(result)
+                          result.fileUrl && setPreviewResult({ fileUrl: result.fileUrl, fileName: result.fileName })
                         }
                       >
                         <div className="flex items-center justify-between text-[10px]">
@@ -564,7 +558,7 @@ export function SearchView() {
 
       {/* Preview Dialog */}
       <TorrentPreviewDialog
-        result={previewResult}
+        input={previewResult}
         open={!!previewResult}
         onOpenChange={(open) => {
           if (!open) setPreviewResult(null);

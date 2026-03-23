@@ -159,6 +159,14 @@ export function useLogs() {
   })
 }
 
+export function useCategories() {
+  return useQuery({
+    queryKey: ['torrents', 'categories'],
+    queryFn: () => qbitClient.getCategories(),
+    enabled: !!qbitClient.isConfigured(),
+  })
+}
+
 export function useServerState() {
   return useQuery({
     queryKey: ['server', 'state'],

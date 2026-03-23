@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { Loader2, Download, File, FolderOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { cn } from '@/lib/utils'
 import {
   Dialog,
   DialogContent,
@@ -9,8 +12,17 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { qbitClient } from '@/lib/api'
+import { useCategories } from '@/hooks/useApi'
 import { toast } from '@/hooks/use-toast'
-import type { SearchResult, TorrentFile } from '@/types'
+import type { TorrentFile } from '@/types'
+
+export interface TorrentPreviewInput {
+  fileUrl?: string
+  file?: File
+  fileName: string
+  savePath?: string
+  category?: string
+}
 
 function formatSize(bytes: number): string {
   if (bytes === 0) return '0 B'
@@ -85,35 +97,94 @@ const DEMO_FILES: TorrentFile[] = [
   { index: 3, name: 'extras/behind-the-scenes.mkv', size: 800_000_000, progress: 0, priority: 1, is_seed: false, piece_range: [5003, 5800] },
 ]
 
+interface CategoryComboboxProps {
+  value: string
+  onChange: (value: string) => void
+  options: string[]
+  disabled?: boolean
+}
+
+function CategoryCombobox({ value, onChange, options, disabled }: CategoryComboboxProps) {
+  const [open, setOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  const filtered = options.filter(o => o.toLowerCase().includes(value.toLowerCase()))
+  const showDropdown = open && filtered.length > 0
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (!containerRef.current?.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  return (
+    <div ref={containerRef} className="relative">
+      <Input
+        placeholder="e.g. movies"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onFocus={() => setOpen(true)}
+        disabled={disabled}
+        autoComplete="off"
+      />
+      {showDropdown && (
+        <ul className="absolute z-50 top-full mt-1 w-full rounded-md border bg-popover shadow-md">
+          {filtered.map(option => (
+            <li
+              key={option}
+              className={cn(
+                'px-3 py-1.5 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground',
+                option === value && 'bg-accent text-accent-foreground'
+              )}
+              onMouseDown={() => { onChange(option); setOpen(false) }}
+            >
+              {option}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 interface TorrentPreviewDialogProps {
-  result: SearchResult | null
+  input: TorrentPreviewInput | null
   open: boolean
   onOpenChange: (open: boolean) => void
 }
 
-export function TorrentPreviewDialog({ result, open, onOpenChange }: TorrentPreviewDialogProps) {
+export function TorrentPreviewDialog({ input, open, onOpenChange }: TorrentPreviewDialogProps) {
+  const { data: categoriesData } = useCategories()
+  const existingCategories = categoriesData ? Object.keys(categoriesData) : []
   const [status, setStatus] = useState<'idle' | 'adding' | 'polling' | 'ready' | 'error'>('idle')
   const [files, setFiles] = useState<TorrentFile[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isDownloading, setIsDownloading] = useState(false)
+  const [savePath, setSavePath] = useState('')
+  const [category, setCategory] = useState('')
   const addedHashRef = useRef<string | null>(null)
   const downloadedRef = useRef(false)
   const cancelledRef = useRef(false)
 
   useEffect(() => {
-    if (!open || !result) return
+    if (!open || !input) return
 
     cancelledRef.current = false
     downloadedRef.current = false
     addedHashRef.current = null
-    setStatus('adding')
-    setFiles(null)
-    setError(null)
-    setIsDownloading(false)
 
     const run = async () => {
+      setStatus('adding')
+      setFiles(null)
+      setError(null)
+      setIsDownloading(false)
+      setSavePath(input.savePath ?? '')
+      setCategory(input.category ?? '')
+
       try {
-        // Demo mode: simulate metadata fetch with fake files
         if (import.meta.env.VITE_DEMO_MODE) {
           await new Promise(r => setTimeout(r, 800))
           if (cancelledRef.current) return
@@ -129,12 +200,13 @@ export function TorrentPreviewDialog({ result, open, onOpenChange }: TorrentPrev
         if (cancelledRef.current) return
 
         const existingHashes = new Set(existing.map(t => t.hash))
-        const magnetHash = extractMagnetHash(result.fileUrl)
+        const magnetHash = input.fileUrl ? extractMagnetHash(input.fileUrl) : null
+        const options = { paused: true, savePath: input.savePath, category: input.category }
 
         // If this torrent is already present (by magnet hash), just show its files
         if (magnetHash && existingHashes.has(magnetHash)) {
           addedHashRef.current = magnetHash
-          downloadedRef.current = true // already exists, don't delete on close
+          downloadedRef.current = true
           const fileList = await qbitClient.getTorrentFiles(magnetHash)
           if (!cancelledRef.current) {
             setFiles(fileList)
@@ -143,18 +215,20 @@ export function TorrentPreviewDialog({ result, open, onOpenChange }: TorrentPrev
           return
         }
 
-        await qbitClient.addTorrentUrl(result.fileUrl, { paused: true })
+        if (input.file) {
+          await qbitClient.addTorrentFile(input.file, options)
+        } else if (input.fileUrl) {
+          await qbitClient.addTorrentUrl(input.fileUrl, options)
+        }
         if (cancelledRef.current) return
 
-        // Set hash immediately for magnet links so cleanup can delete the torrent
-        // even if the user closes the dialog before polling completes.
+        // For magnet links, set hash immediately so cleanup works if cancelled during polling
         if (magnetHash) {
           addedHashRef.current = magnetHash
         }
 
         setStatus('polling')
 
-        // Poll until the torrent appears and metadata is ready
         for (let i = 0; i < 30 && !cancelledRef.current; i++) {
           await new Promise(r => setTimeout(r, 1000))
           const torrents = await qbitClient.getTorrents()
@@ -189,7 +263,7 @@ export function TorrentPreviewDialog({ result, open, onOpenChange }: TorrentPrev
     run()
 
     return () => { cancelledRef.current = true }
-  }, [open, result])
+  }, [open, input])
 
   const cleanup = () => {
     cancelledRef.current = true
@@ -202,7 +276,10 @@ export function TorrentPreviewDialog({ result, open, onOpenChange }: TorrentPrev
     if (!addedHashRef.current) return
     setIsDownloading(true)
     try {
-      await qbitClient.resumeTorrents([addedHashRef.current])
+      const hashes = [addedHashRef.current]
+      if (savePath.trim()) await qbitClient.setTorrentLocation(hashes, savePath.trim())
+      if (category.trim()) await qbitClient.setTorrentCategory(hashes, category.trim())
+      await qbitClient.resumeTorrents(hashes)
       downloadedRef.current = true
       toast.success('Torrent added to download queue')
       onOpenChange(false)
@@ -219,9 +296,9 @@ export function TorrentPreviewDialog({ result, open, onOpenChange }: TorrentPrev
       open={open}
       onOpenChange={(nextOpen) => { if (!nextOpen) { cleanup(); onOpenChange(false) } }}
     >
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="truncate pr-6">{result?.fileName ?? 'Torrent Preview'}</DialogTitle>
+          <DialogTitle className="truncate pr-6">{input?.fileName ?? 'Torrent Preview'}</DialogTitle>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto min-h-0">
@@ -247,6 +324,28 @@ export function TorrentPreviewDialog({ result, open, onOpenChange }: TorrentPrev
           {status === 'ready' && files?.length === 0 && (
             <div className="text-center py-8 text-muted-foreground text-sm">No files found</div>
           )}
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 border-t pt-3">
+          <div className="space-y-1">
+            <Label className="text-xs">Category</Label>
+            <CategoryCombobox
+              value={category}
+              onChange={setCategory}
+              options={existingCategories}
+              disabled={status !== 'ready'}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="preview-savepath" className="text-xs">Save Path</Label>
+            <Input
+              id="preview-savepath"
+              placeholder="Default"
+              value={savePath}
+              onChange={(e) => setSavePath(e.target.value)}
+              disabled={status !== 'ready'}
+            />
+          </div>
         </div>
 
         <DialogFooter className="border-t pt-3">

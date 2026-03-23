@@ -174,16 +174,35 @@ class QBittorrentClient {
     })
   }
 
-  async addTorrentFile(file: File, options?: { savePath?: string; category?: string }): Promise<void> {
+  async addTorrentFile(file: File, options?: { savePath?: string; category?: string; paused?: boolean }): Promise<void> {
     const formData = new FormData()
     formData.append('torrents', file)
     if (options?.savePath) formData.append('savepath', options.savePath)
     if (options?.category) formData.append('category', options.category)
+    if (options?.paused) formData.append('paused', 'true')
 
     await this.request('/api/v2/torrents/add', {
       method: 'POST',
       body: formData,
     })
+  }
+
+  async getCategories(): Promise<Record<string, { name: string; savePath: string }>> {
+    return this.request('/api/v2/torrents/categories')
+  }
+
+  async setTorrentLocation(hashes: string[], location: string): Promise<void> {
+    const formData = new URLSearchParams()
+    formData.append('hashes', hashes.join('|'))
+    formData.append('location', location)
+    await this.request('/api/v2/torrents/setLocation', { method: 'POST', body: formData })
+  }
+
+  async setTorrentCategory(hashes: string[], category: string): Promise<void> {
+    const formData = new URLSearchParams()
+    formData.append('hashes', hashes.join('|'))
+    formData.append('category', category)
+    await this.request('/api/v2/torrents/setCategory', { method: 'POST', body: formData })
   }
 
   async deleteTorrents(hashes: string[], deleteFiles: boolean = false): Promise<void> {
