@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useAuth } from "@/hooks/useAuth";
 import { qbitClient } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -66,7 +65,6 @@ const defaultPreferences: Preferences = {
 };
 
 export function SettingsView() {
-  const { logout, username } = useAuth();
   const [preferences, setPreferences] =
     useState<Preferences>(defaultPreferences);
   const [loading, setLoading] = useState(true);
@@ -169,11 +167,6 @@ export function SettingsView() {
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleLogout = async () => {
-    await logout();
-    toast("Logged out");
   };
 
   const updatePreference = <K extends keyof Preferences>(
