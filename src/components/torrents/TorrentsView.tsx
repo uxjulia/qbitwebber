@@ -214,9 +214,14 @@ export function TorrentsView() {
   const [sortField, setSortField] = useState<SortField>("state");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [currentPage, setCurrentPage] = useState(1);
-  const [filesDialogTorrent, setFilesDialogTorrent] = useState<Torrent | null>(null);
+  const [filesDialogTorrent, setFilesDialogTorrent] = useState<Torrent | null>(
+    null,
+  );
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState<{ hashes: string[]; deleteFiles: boolean } | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{
+    hashes: string[];
+    deleteFiles: boolean;
+  } | null>(null);
 
   const sortedTorrents = useMemo(() => {
     if (!torrents) return [];
@@ -309,7 +314,8 @@ export function TorrentsView() {
   const confirmAndDelete = () => {
     if (!confirmDelete) return;
     deleteMutation.mutate(confirmDelete);
-    if (confirmDelete.hashes.every(h => selected.has(h))) setSelected(new Set());
+    if (confirmDelete.hashes.every((h) => selected.has(h)))
+      setSelected(new Set());
     setConfirmDelete(null);
   };
 
@@ -623,13 +629,23 @@ export function TorrentsView() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem
-                                  onClick={() => setConfirmDelete({ hashes: [torrent.hash], deleteFiles: false })}
+                                  onClick={() =>
+                                    setConfirmDelete({
+                                      hashes: [torrent.hash],
+                                      deleteFiles: false,
+                                    })
+                                  }
                                 >
                                   Delete
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
-                                  onClick={() => setConfirmDelete({ hashes: [torrent.hash], deleteFiles: true })}
-                                  className="text-destructive cursor-pointer"
+                                  onClick={() =>
+                                    setConfirmDelete({
+                                      hashes: [torrent.hash],
+                                      deleteFiles: true,
+                                    })
+                                  }
+                                  className="text-destructive"
                                 >
                                   Delete + Files
                                 </DropdownMenuItem>
@@ -786,7 +802,10 @@ export function TorrentsView() {
                     size="icon"
                     className="h-7 w-7"
                     onClick={() =>
-                      setConfirmDelete({ hashes: [torrent.hash], deleteFiles: false })
+                      setConfirmDelete({
+                        hashes: [torrent.hash],
+                        deleteFiles: false,
+                      })
                     }
                   >
                     <Trash2 className="h-3 w-3" />
@@ -834,21 +853,27 @@ export function TorrentsView() {
         onOpenChange={(open) => !open && setFilesDialogTorrent(null)}
       />
 
-      <Dialog open={!!confirmDelete} onOpenChange={(open) => !open && setConfirmDelete(null)}>
+      <Dialog
+        open={!!confirmDelete}
+        onOpenChange={(open) => !open && setConfirmDelete(null)}
+      >
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>
-              {confirmDelete?.deleteFiles ? "Delete torrent and files?" : "Delete torrent?"}
+              {confirmDelete?.deleteFiles
+                ? "Delete torrent and files?"
+                : "Delete torrent?"}
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
             {confirmDelete?.deleteFiles
               ? `This will remove ${confirmDelete.hashes.length > 1 ? `${confirmDelete.hashes.length} torrents` : "this torrent"} and permanently delete all associated files from disk.`
-              : `This will remove ${confirmDelete?.hashes.length && confirmDelete.hashes.length > 1 ? `${confirmDelete.hashes.length} torrents` : "this torrent"} from the list. Downloaded files will not be deleted.`
-            }
+              : `This will remove ${confirmDelete?.hashes.length && confirmDelete.hashes.length > 1 ? `${confirmDelete.hashes.length} torrents` : "this torrent"} from the list. Downloaded files will not be deleted.`}
           </p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmDelete(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setConfirmDelete(null)}>
+              Cancel
+            </Button>
             <Button variant="destructive" onClick={confirmAndDelete}>
               {confirmDelete?.deleteFiles ? "Delete + Files" : "Delete"}
             </Button>
