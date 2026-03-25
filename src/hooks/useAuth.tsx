@@ -51,7 +51,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = async () => {
-    await qbitClient.logout()
+    try {
+      await qbitClient.logout()
+    } catch {
+      // ignore — session may already be expired
+    }
     localStorage.removeItem('qbit_pass')
     setIsAuthenticated(false)
   }

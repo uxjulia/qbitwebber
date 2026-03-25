@@ -27,10 +27,12 @@ function StatRow({
   label,
   value,
   icon,
+  valueClassName,
 }: {
   label: string;
   value: string;
   icon?: React.ReactNode;
+  valueClassName?: string;
 }) {
   return (
     <div className="flex items-center justify-between py-2 border-b last:border-0">
@@ -38,7 +40,11 @@ function StatRow({
         {icon}
         {label}
       </div>
-      <span className="text-sm font-medium tabular-nums">{value}</span>
+      <span
+        className={`text-sm font-medium tabular-nums ${valueClassName ?? ""}`}
+      >
+        {value}
+      </span>
     </div>
   );
 }
@@ -73,7 +79,7 @@ export function StatsView() {
     "connected" ? (
     <Wifi className="h-4 w-4 text-green-500" />
   ) : state.connection_status === "firewalled" ? (
-    <Shield className="h-4 w-4 text-yellow-500" />
+    <Shield className="h-4 w-4 text-amber-500" />
   ) : (
     <WifiOff className="h-4 w-4 text-red-500" />
   );
@@ -87,7 +93,7 @@ export function StatsView() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="max-w-xl mx-auto space-y-4">
       {/* All-time */}
       <Card>
         <CardHeader className="pb-2">
@@ -154,6 +160,15 @@ export function StatsView() {
             label="Status"
             value={state?.connection_status ?? "—"}
             icon={connectionIcon}
+            valueClassName={`[font-variant:small-caps] ${
+              state?.connection_status === "connected"
+                ? "text-green-500"
+                : state?.connection_status === "firewalled"
+                  ? "text-amber-500"
+                  : state?.connection_status === "disconnected"
+                    ? "text-red-500"
+                    : ""
+            }`}
           />
           <StatRow
             label="DHT nodes"

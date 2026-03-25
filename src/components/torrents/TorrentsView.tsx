@@ -18,6 +18,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -47,6 +54,15 @@ function formatSize(bytes: number): string {
   const sizes = ["B", "KB", "MB", "GB", "TB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+}
+
+function formatDate(unixSeconds: number): string {
+  if (!unixSeconds) return "--";
+  return new Date(unixSeconds * 1000).toLocaleDateString("en-US", {
+    month: "2-digit",
+    day: "2-digit",
+    year: "numeric",
+  });
 }
 
 function formatTime(seconds: number): string {
@@ -105,6 +121,32 @@ function getStateLabel(state: string, completedOn: number): string {
   return labels[state] || state;
 }
 
+const STATE_PRIORITY: Record<string, number> = {
+  downloading: 0,
+  forcedDL: 1,
+  metaDL: 2,
+  forcedMetaDL: 3,
+  uploading: 4,
+  seeding: 5,
+  forcedUP: 6,
+  stalledDL: 7,
+  stalledUP: 8,
+  checkingDL: 9,
+  checkingUP: 10,
+  checkingResumeData: 11,
+  allocating: 12,
+  moving: 13,
+  queuedDL: 14,
+  queuedUP: 15,
+  pausedDL: 16,
+  pausedUP: 17,
+  stoppedDL: 18,
+  stoppedUP: 19,
+  completed: 20,
+  missingFiles: 21,
+  error: 22,
+};
+
 type SortField =
   | "name"
   | "size"
@@ -113,7 +155,8 @@ type SortField =
   | "upspeed"
   | "eta"
   | "state"
-  | "ratio";
+  | "ratio"
+  | "added_on";
 type SortDirection = "asc" | "desc";
 
 const PAGE_SIZE = 20;
@@ -127,6 +170,7 @@ const sortLabels: Record<SortField, string> = {
   upspeed: "Upload",
   eta: "ETA",
   ratio: "Ratio",
+  added_on: "Added",
 };
 
 function SortButton({
@@ -167,13 +211,17 @@ export function TorrentsView() {
   const resumeMutation = useResumeTorrents();
   const deleteMutation = useDeleteTorrents();
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [sortField, setSortField] = useState<SortField>("name");
+  const [sortField, setSortField] = useState<SortField>("state");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [currentPage, setCurrentPage] = useState(1);
   const [filesDialogTorrent, setFilesDialogTorrent] = useState<Torrent | null>(
     null,
   );
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{
+    hashes: string[];
+    deleteFiles: boolean;
+  } | null>(null);
 
   const sortedTorrents = useMemo(() => {
     if (!torrents) return [];
@@ -198,11 +246,17 @@ export function TorrentsView() {
         case "eta":
           cmp = a.eta - b.eta;
           break;
-        case "state":
-          cmp = a.state.localeCompare(b.state);
+        case "state": {
+          const pa = STATE_PRIORITY[a.state] ?? 99;
+          const pb = STATE_PRIORITY[b.state] ?? 99;
+          cmp = pa - pb;
           break;
+        }
         case "ratio":
           cmp = a.ratio - b.ratio;
+          break;
+        case "added_on":
+          cmp = a.added_on - b.added_on;
           break;
       }
       return sortDirection === "asc" ? cmp : -cmp;
@@ -254,8 +308,15 @@ export function TorrentsView() {
   };
 
   const handleDelete = (deleteFiles: boolean) => {
-    deleteMutation.mutate({ hashes: Array.from(selected), deleteFiles });
-    setSelected(new Set());
+    setConfirmDelete({ hashes: Array.from(selected), deleteFiles });
+  };
+
+  const confirmAndDelete = () => {
+    if (!confirmDelete) return;
+    deleteMutation.mutate(confirmDelete);
+    if (confirmDelete.hashes.every((h) => selected.has(h)))
+      setSelected(new Set());
+    setConfirmDelete(null);
   };
 
   if (isLoading) {
@@ -339,6 +400,11 @@ export function TorrentsView() {
             <DropdownMenuItem onClick={() => handleSort("ratio")}>
               Ratio{" "}
               {sortField === "ratio" && (sortDirection === "asc" ? "↑" : "↓")}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleSort("added_on")}>
+              Added{" "}
+              {sortField === "added_on" &&
+                (sortDirection === "asc" ? "↑" : "↓")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -441,6 +507,16 @@ export function TorrentsView() {
                         Ratio
                       </SortButton>
                     </TableHead>
+                    <TableHead className="w-[100px]">
+                      <SortButton
+                        field="added_on"
+                        currentField={sortField}
+                        direction={sortDirection}
+                        onClick={() => handleSort("added_on")}
+                      >
+                        Added
+                      </SortButton>
+                    </TableHead>
                     <TableHead className="w-[80px]"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -509,6 +585,9 @@ export function TorrentsView() {
                         >
                           {torrent.ratio.toFixed(2)}
                         </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {formatDate(torrent.added_on)}
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
                             <Button
@@ -543,7 +622,7 @@ export function TorrentsView() {
                                   title="Delete"
                                   variant="ghost"
                                   size="icon"
-                                  className="h-8 w-8"
+                                  className="h-8 w-8 cursor-pointer"
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
@@ -551,7 +630,7 @@ export function TorrentsView() {
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem
                                   onClick={() =>
-                                    deleteMutation.mutate({
+                                    setConfirmDelete({
                                       hashes: [torrent.hash],
                                       deleteFiles: false,
                                     })
@@ -561,7 +640,7 @@ export function TorrentsView() {
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   onClick={() =>
-                                    deleteMutation.mutate({
+                                    setConfirmDelete({
                                       hashes: [torrent.hash],
                                       deleteFiles: true,
                                     })
@@ -723,7 +802,7 @@ export function TorrentsView() {
                     size="icon"
                     className="h-7 w-7"
                     onClick={() =>
-                      deleteMutation.mutate({
+                      setConfirmDelete({
                         hashes: [torrent.hash],
                         deleteFiles: false,
                       })
@@ -773,6 +852,34 @@ export function TorrentsView() {
         open={!!filesDialogTorrent}
         onOpenChange={(open) => !open && setFilesDialogTorrent(null)}
       />
+
+      <Dialog
+        open={!!confirmDelete}
+        onOpenChange={(open) => !open && setConfirmDelete(null)}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>
+              {confirmDelete?.deleteFiles
+                ? "Delete torrent and files?"
+                : "Delete torrent?"}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {confirmDelete?.deleteFiles
+              ? `This will remove ${confirmDelete.hashes.length > 1 ? `${confirmDelete.hashes.length} torrents` : "this torrent"} and permanently delete all associated files from disk.`
+              : `This will remove ${confirmDelete?.hashes.length && confirmDelete.hashes.length > 1 ? `${confirmDelete.hashes.length} torrents` : "this torrent"} from the list. Downloaded files will not be deleted.`}
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDelete(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmAndDelete}>
+              {confirmDelete?.deleteFiles ? "Delete + Files" : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
