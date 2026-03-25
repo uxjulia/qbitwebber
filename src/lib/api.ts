@@ -166,7 +166,7 @@ class QBittorrentClient {
     formData.append('urls', url)
     if (options?.savePath) formData.append('savepath', options.savePath)
     if (options?.category) formData.append('category', options.category)
-    if (options?.paused) formData.append('paused', 'true')
+    if (options?.paused) formData.append('stopped', 'true')
 
     await this.request('/api/v2/torrents/add', {
       method: 'POST',
@@ -179,7 +179,7 @@ class QBittorrentClient {
     formData.append('torrents', file)
     if (options?.savePath) formData.append('savepath', options.savePath)
     if (options?.category) formData.append('category', options.category)
-    if (options?.paused) formData.append('paused', 'true')
+    if (options?.paused) formData.append('stopped', 'true')
 
     await this.request('/api/v2/torrents/add', {
       method: 'POST',
@@ -220,7 +220,7 @@ class QBittorrentClient {
     const formData = new URLSearchParams()
     formData.append('hashes', hashes.join('|'))
 
-    await this.request('/api/v2/torrents/pause', {
+    await this.request('/api/v2/torrents/stop', {
       method: 'POST',
       body: formData,
     })
@@ -230,7 +230,7 @@ class QBittorrentClient {
     const formData = new URLSearchParams()
     formData.append('hashes', hashes.join('|'))
 
-    await this.request('/api/v2/torrents/resume', {
+    await this.request('/api/v2/torrents/start', {
       method: 'POST',
       body: formData,
     })
