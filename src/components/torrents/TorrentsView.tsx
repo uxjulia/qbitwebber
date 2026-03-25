@@ -49,6 +49,15 @@ function formatSize(bytes: number): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
 }
 
+function formatDate(unixSeconds: number): string {
+  if (!unixSeconds) return "--";
+  return new Date(unixSeconds * 1000).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 function formatTime(seconds: number): string {
   if (seconds < 0 || seconds >= 8640000) return "--";
   if (seconds < 60) return `${seconds}s`;
@@ -105,6 +114,32 @@ function getStateLabel(state: string, completedOn: number): string {
   return labels[state] || state;
 }
 
+const STATE_PRIORITY: Record<string, number> = {
+  downloading: 0,
+  forcedDL: 1,
+  metaDL: 2,
+  forcedMetaDL: 3,
+  uploading: 4,
+  seeding: 5,
+  forcedUP: 6,
+  stalledDL: 7,
+  stalledUP: 8,
+  checkingDL: 9,
+  checkingUP: 10,
+  checkingResumeData: 11,
+  allocating: 12,
+  moving: 13,
+  queuedDL: 14,
+  queuedUP: 15,
+  pausedDL: 16,
+  pausedUP: 17,
+  stoppedDL: 18,
+  stoppedUP: 19,
+  completed: 20,
+  missingFiles: 21,
+  error: 22,
+};
+
 type SortField =
   | "name"
   | "size"
@@ -113,7 +148,8 @@ type SortField =
   | "upspeed"
   | "eta"
   | "state"
-  | "ratio";
+  | "ratio"
+  | "added_on";
 type SortDirection = "asc" | "desc";
 
 const PAGE_SIZE = 20;
@@ -127,6 +163,7 @@ const sortLabels: Record<SortField, string> = {
   upspeed: "Upload",
   eta: "ETA",
   ratio: "Ratio",
+  added_on: "Added",
 };
 
 function SortButton({
@@ -167,7 +204,7 @@ export function TorrentsView() {
   const resumeMutation = useResumeTorrents();
   const deleteMutation = useDeleteTorrents();
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [sortField, setSortField] = useState<SortField>("name");
+  const [sortField, setSortField] = useState<SortField>("state");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [currentPage, setCurrentPage] = useState(1);
   const [filesDialogTorrent, setFilesDialogTorrent] = useState<Torrent | null>(
@@ -198,11 +235,17 @@ export function TorrentsView() {
         case "eta":
           cmp = a.eta - b.eta;
           break;
-        case "state":
-          cmp = a.state.localeCompare(b.state);
+        case "state": {
+          const pa = STATE_PRIORITY[a.state] ?? 99;
+          const pb = STATE_PRIORITY[b.state] ?? 99;
+          cmp = pa - pb;
           break;
+        }
         case "ratio":
           cmp = a.ratio - b.ratio;
+          break;
+        case "added_on":
+          cmp = a.added_on - b.added_on;
           break;
       }
       return sortDirection === "asc" ? cmp : -cmp;
@@ -340,6 +383,10 @@ export function TorrentsView() {
               Ratio{" "}
               {sortField === "ratio" && (sortDirection === "asc" ? "↑" : "↓")}
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleSort("added_on")}>
+              Added{" "}
+              {sortField === "added_on" && (sortDirection === "asc" ? "↑" : "↓")}
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -441,6 +488,16 @@ export function TorrentsView() {
                         Ratio
                       </SortButton>
                     </TableHead>
+                    <TableHead className="w-[100px]">
+                      <SortButton
+                        field="added_on"
+                        currentField={sortField}
+                        direction={sortDirection}
+                        onClick={() => handleSort("added_on")}
+                      >
+                        Added
+                      </SortButton>
+                    </TableHead>
                     <TableHead className="w-[80px]"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -508,6 +565,9 @@ export function TorrentsView() {
                           className={`text-sm ${torrent.ratio < 1 ? "text-red-500" : "text-green-500"}`}
                         >
                           {torrent.ratio.toFixed(2)}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {formatDate(torrent.added_on)}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">

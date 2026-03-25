@@ -70,7 +70,7 @@ function FileTreeNode({ node, depth }: { node: TreeNode; depth: number }) {
     return (
       <div className="flex items-center gap-2 py-1 px-2" style={{ paddingLeft: indent }}>
         <File className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-        <span className="text-sm truncate flex-1">{node.name}</span>
+        <span className="text-sm break-all flex-1">{node.name}</span>
         <span className="text-xs text-muted-foreground flex-shrink-0">{formatSize(node.size)}</span>
       </div>
     )
@@ -201,7 +201,7 @@ export function TorrentPreviewDialog({ input, open, onOpenChange }: TorrentPrevi
 
         const existingHashes = new Set(existing.map(t => t.hash))
         const magnetHash = input.fileUrl ? extractMagnetHash(input.fileUrl) : null
-        const options = { paused: true, savePath: input.savePath, category: input.category }
+        const options = { savePath: input.savePath, category: input.category }
 
         // If this torrent is already present (by magnet hash), just show its files
         if (magnetHash && existingHashes.has(magnetHash)) {
@@ -238,6 +238,7 @@ export function TorrentPreviewDialog({ input, open, onOpenChange }: TorrentPrevi
 
           if (found && !METADATA_STATES.has(found.state)) {
             addedHashRef.current = found.hash
+            await qbitClient.pauseTorrents([found.hash])
             const fileList = await qbitClient.getTorrentFiles(found.hash)
             if (!cancelledRef.current) {
               setFiles(fileList)
@@ -296,7 +297,7 @@ export function TorrentPreviewDialog({ input, open, onOpenChange }: TorrentPrevi
       open={open}
       onOpenChange={(nextOpen) => { if (!nextOpen) { cleanup(); onOpenChange(false) } }}
     >
-      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="truncate pr-6">{input?.fileName ?? 'Torrent Preview'}</DialogTitle>
         </DialogHeader>
