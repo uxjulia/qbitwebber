@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Loader2, Download, File, FolderOpen } from 'lucide-react'
+import { Loader2, Download, File, FolderOpen, CheckSquare, Square } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -42,6 +42,7 @@ interface TreeNode {
   path: string
   isFile: boolean
   size: number
+  index: number
   children: TreeNode[]
 }
 
@@ -55,7 +56,7 @@ function buildTree(files: TorrentFile[]): TreeNode[] {
       const path = parts.slice(0, idx + 1).join('/')
       let node = current.find(n => n.name === part)
       if (!node) {
-        node = { name: part, path, isFile: isLast, size: isLast ? file.size : 0, children: [] }
+        node = { name: part, path, isFile: isLast, size: isLast ? file.size : 0, index: isLast ? file.index : -1, children: [] }
         current.push(node)
       }
       if (!isLast) current = node.children
@@ -64,11 +65,30 @@ function buildTree(files: TorrentFile[]): TreeNode[] {
   return root
 }
 
-function FileTreeNode({ node, depth }: { node: TreeNode; depth: number }) {
+function FileTreeNode({
+  node,
+  depth,
+  selectedIndices,
+  onToggle,
+}: {
+  node: TreeNode
+  depth: number
+  selectedIndices: Set<number>
+  onToggle: (index: number) => void
+}) {
   const indent = depth * 16
   if (node.isFile) {
+    const isSelected = selectedIndices.has(node.index)
     return (
-      <div className="flex items-center gap-2 py-1 px-2" style={{ paddingLeft: indent }}>
+      <div
+        className="flex items-center gap-2 py-1 px-2 hover:bg-muted/50 cursor-pointer"
+        style={{ paddingLeft: indent }}
+        onClick={() => onToggle(node.index)}
+      >
+        {isSelected
+          ? <CheckSquare className="h-4 w-4 text-green-500 flex-shrink-0" />
+          : <Square className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+        }
         <File className="h-4 w-4 text-muted-foreground flex-shrink-0" />
         <span className="text-sm break-all flex-1">{node.name}</span>
         <span className="text-xs text-muted-foreground flex-shrink-0">{formatSize(node.size)}</span>
@@ -82,7 +102,7 @@ function FileTreeNode({ node, depth }: { node: TreeNode; depth: number }) {
         <span className="truncate">{node.name}</span>
       </div>
       {node.children.map(child => (
-        <FileTreeNode key={child.path} node={child} depth={depth + 1} />
+        <FileTreeNode key={child.path} node={child} depth={depth + 1} selectedIndices={selectedIndices} onToggle={onToggle} />
       ))}
     </div>
   )
@@ -161,6 +181,7 @@ export function TorrentPreviewDialog({ input, open, onOpenChange }: TorrentPrevi
   const existingCategories = categoriesData ? Object.keys(categoriesData) : []
   const [status, setStatus] = useState<'idle' | 'adding' | 'polling' | 'ready' | 'error'>('idle')
   const [files, setFiles] = useState<TorrentFile[] | null>(null)
+  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set())
   const [error, setError] = useState<string | null>(null)
   const [isDownloading, setIsDownloading] = useState(false)
   const [savePath, setSavePath] = useState('')
@@ -179,6 +200,7 @@ export function TorrentPreviewDialog({ input, open, onOpenChange }: TorrentPrevi
     const run = async () => {
       setStatus('adding')
       setFiles(null)
+      setSelectedIndices(new Set())
       setError(null)
       setIsDownloading(false)
       setSavePath(input.savePath ?? '')
@@ -192,6 +214,7 @@ export function TorrentPreviewDialog({ input, open, onOpenChange }: TorrentPrevi
           await new Promise(r => setTimeout(r, 700))
           if (cancelledRef.current) return
           setFiles(DEMO_FILES)
+          setSelectedIndices(new Set(DEMO_FILES.map(f => f.index)))
           setStatus('ready')
           return
         }
@@ -210,6 +233,7 @@ export function TorrentPreviewDialog({ input, open, onOpenChange }: TorrentPrevi
           const fileList = await qbitClient.getTorrentFiles(magnetHash)
           if (!cancelledRef.current) {
             setFiles(fileList)
+            setSelectedIndices(new Set(fileList.map(f => f.index)))
             setStatus('ready')
           }
           return
@@ -242,6 +266,7 @@ export function TorrentPreviewDialog({ input, open, onOpenChange }: TorrentPrevi
             const fileList = await qbitClient.getTorrentFiles(found.hash)
             if (!cancelledRef.current) {
               setFiles(fileList)
+              setSelectedIndices(new Set(fileList.map(f => f.index)))
               setStatus('ready')
             }
             return
@@ -290,6 +315,33 @@ export function TorrentPreviewDialog({ input, open, onOpenChange }: TorrentPrevi
     }
   }
 
+  const handleToggleFile = async (index: number) => {
+    if (!addedHashRef.current) return
+    const isSelected = selectedIndices.has(index)
+    const newPriority = isSelected ? 0 : 1
+    setSelectedIndices(prev => {
+      const next = new Set(prev)
+      if (isSelected) next.delete(index)
+      else next.add(index)
+      return next
+    })
+    try {
+      await qbitClient.setFilePriority(addedHashRef.current, String(index), newPriority)
+    } catch {
+      // revert on failure
+      setSelectedIndices(prev => {
+        const next = new Set(prev)
+        if (isSelected) next.add(index)
+        else next.delete(index)
+        return next
+      })
+      toast.error('Failed to update file selection')
+    }
+  }
+
+  const selectedSize = files?.filter(f => selectedIndices.has(f.index)).reduce((acc, f) => acc + f.size, 0) ?? 0
+  const totalSize = files?.reduce((acc, f) => acc + f.size, 0) ?? 0
+
   const statusLabel = status === 'adding' ? 'Adding torrent...' : 'Fetching metadata...'
 
   return (
@@ -314,11 +366,12 @@ export function TorrentPreviewDialog({ input, open, onOpenChange }: TorrentPrevi
           )}
           {status === 'ready' && files && files.length > 0 && (
             <>
-              <div className="px-4 py-2 border-b text-sm text-muted-foreground">
-                {files.length} file{files.length !== 1 ? 's' : ''}
+              <div className="px-4 py-2 border-b text-sm text-muted-foreground flex justify-between">
+                <span>{files.length} file{files.length !== 1 ? 's' : ''}</span>
+                <span>Selected: {selectedIndices.size} ({formatSize(selectedSize)} / {formatSize(totalSize)})</span>
               </div>
               {buildTree(files).map(node => (
-                <FileTreeNode key={node.path} node={node} depth={0} />
+                <FileTreeNode key={node.path} node={node} depth={0} selectedIndices={selectedIndices} onToggle={handleToggleFile} />
               ))}
             </>
           )}

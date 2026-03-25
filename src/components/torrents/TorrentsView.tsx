@@ -51,9 +51,9 @@ function formatSize(bytes: number): string {
 
 function formatDate(unixSeconds: number): string {
   if (!unixSeconds) return "--";
-  return new Date(unixSeconds * 1000).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
+  return new Date(unixSeconds * 1000).toLocaleDateString("en-US", {
+    month: "2-digit",
+    day: "2-digit",
     year: "numeric",
   });
 }
