@@ -18,6 +18,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -207,10 +214,9 @@ export function TorrentsView() {
   const [sortField, setSortField] = useState<SortField>("state");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [currentPage, setCurrentPage] = useState(1);
-  const [filesDialogTorrent, setFilesDialogTorrent] = useState<Torrent | null>(
-    null,
-  );
+  const [filesDialogTorrent, setFilesDialogTorrent] = useState<Torrent | null>(null);
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ hashes: string[]; deleteFiles: boolean } | null>(null);
 
   const sortedTorrents = useMemo(() => {
     if (!torrents) return [];
@@ -297,8 +303,14 @@ export function TorrentsView() {
   };
 
   const handleDelete = (deleteFiles: boolean) => {
-    deleteMutation.mutate({ hashes: Array.from(selected), deleteFiles });
-    setSelected(new Set());
+    setConfirmDelete({ hashes: Array.from(selected), deleteFiles });
+  };
+
+  const confirmAndDelete = () => {
+    if (!confirmDelete) return;
+    deleteMutation.mutate(confirmDelete);
+    if (confirmDelete.hashes.every(h => selected.has(h))) setSelected(new Set());
+    setConfirmDelete(null);
   };
 
   if (isLoading) {
@@ -385,7 +397,8 @@ export function TorrentsView() {
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleSort("added_on")}>
               Added{" "}
-              {sortField === "added_on" && (sortDirection === "asc" ? "↑" : "↓")}
+              {sortField === "added_on" &&
+                (sortDirection === "asc" ? "↑" : "↓")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -603,30 +616,20 @@ export function TorrentsView() {
                                   title="Delete"
                                   variant="ghost"
                                   size="icon"
-                                  className="h-8 w-8"
+                                  className="h-8 w-8 cursor-pointer"
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem
-                                  onClick={() =>
-                                    deleteMutation.mutate({
-                                      hashes: [torrent.hash],
-                                      deleteFiles: false,
-                                    })
-                                  }
+                                  onClick={() => setConfirmDelete({ hashes: [torrent.hash], deleteFiles: false })}
                                 >
                                   Delete
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
-                                  onClick={() =>
-                                    deleteMutation.mutate({
-                                      hashes: [torrent.hash],
-                                      deleteFiles: true,
-                                    })
-                                  }
-                                  className="text-destructive"
+                                  onClick={() => setConfirmDelete({ hashes: [torrent.hash], deleteFiles: true })}
+                                  className="text-destructive cursor-pointer"
                                 >
                                   Delete + Files
                                 </DropdownMenuItem>
@@ -783,10 +786,7 @@ export function TorrentsView() {
                     size="icon"
                     className="h-7 w-7"
                     onClick={() =>
-                      deleteMutation.mutate({
-                        hashes: [torrent.hash],
-                        deleteFiles: false,
-                      })
+                      setConfirmDelete({ hashes: [torrent.hash], deleteFiles: false })
                     }
                   >
                     <Trash2 className="h-3 w-3" />
@@ -833,6 +833,28 @@ export function TorrentsView() {
         open={!!filesDialogTorrent}
         onOpenChange={(open) => !open && setFilesDialogTorrent(null)}
       />
+
+      <Dialog open={!!confirmDelete} onOpenChange={(open) => !open && setConfirmDelete(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>
+              {confirmDelete?.deleteFiles ? "Delete torrent and files?" : "Delete torrent?"}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {confirmDelete?.deleteFiles
+              ? `This will remove ${confirmDelete.hashes.length > 1 ? `${confirmDelete.hashes.length} torrents` : "this torrent"} and permanently delete all associated files from disk.`
+              : `This will remove ${confirmDelete?.hashes.length && confirmDelete.hashes.length > 1 ? `${confirmDelete.hashes.length} torrents` : "this torrent"} from the list. Downloaded files will not be deleted.`
+            }
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDelete(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={confirmAndDelete}>
+              {confirmDelete?.deleteFiles ? "Delete + Files" : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

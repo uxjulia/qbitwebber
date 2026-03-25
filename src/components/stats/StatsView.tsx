@@ -79,7 +79,7 @@ export function StatsView() {
     "connected" ? (
     <Wifi className="h-4 w-4 text-green-500" />
   ) : state.connection_status === "firewalled" ? (
-    <Shield className="h-4 w-4 text-yellow-500" />
+    <Shield className="h-4 w-4 text-amber-500" />
   ) : (
     <WifiOff className="h-4 w-4 text-red-500" />
   );
@@ -93,7 +93,7 @@ export function StatsView() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="max-w-xl mx-auto space-y-4">
       {/* All-time */}
       <Card>
         <CardHeader className="pb-2">
@@ -164,7 +164,7 @@ export function StatsView() {
               state?.connection_status === "connected"
                 ? "text-green-500"
                 : state?.connection_status === "firewalled"
-                  ? "text-orange-500"
+                  ? "text-amber-500"
                   : state?.connection_status === "disconnected"
                     ? "text-red-500"
                     : ""

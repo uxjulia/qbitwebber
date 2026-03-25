@@ -73,10 +73,11 @@ export function SearchView() {
   const [selectedResult, setSelectedResult] = useState<SearchResult | null>(
     null,
   );
-  const [previewResult, setPreviewResult] = useState<TorrentPreviewInput | null>(null);
+  const [previewResult, setPreviewResult] =
+    useState<TorrentPreviewInput | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [expandedResult, setExpandedResult] = useState<number | null>(null);
-  const [cancelSearch, setCancelSearch] = useState(false);
+  const [, setCancelSearch] = useState(false);
   const cancelSearchRef = useRef(false);
   const currentSearchIdRef = useRef<number | null>(null);
 
@@ -358,7 +359,11 @@ export function SearchView() {
                           key={index}
                           className="cursor-pointer hover:bg-muted/50"
                           onDoubleClick={() =>
-                            result.fileUrl && setPreviewResult({ fileUrl: result.fileUrl, fileName: result.fileName })
+                            result.fileUrl &&
+                            setPreviewResult({
+                              fileUrl: result.fileUrl,
+                              fileName: result.fileName,
+                            })
                           }
                         >
                           <TableCell className="font-medium truncate max-w-[300px]">
@@ -453,7 +458,11 @@ export function SearchView() {
                       <div
                         className="flex-1 min-w-0 cursor-pointer"
                         onClick={() =>
-                          result.fileUrl && setPreviewResult({ fileUrl: result.fileUrl, fileName: result.fileName })
+                          result.fileUrl &&
+                          setPreviewResult({
+                            fileUrl: result.fileUrl,
+                            fileName: result.fileName,
+                          })
                         }
                       >
                         <div className="flex items-center justify-between text-[10px]">

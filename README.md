@@ -3,9 +3,10 @@
 This fork includes the following updates:
 
 - Preview content before downloading
+- Select/deselect files within torrents to download
 - Stats page
 - Apply categories and save path when adding files from search
-- Minor UI improvements
+- Various UI improvements
 
 # qbitwebber
 
